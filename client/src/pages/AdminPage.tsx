@@ -1,11 +1,12 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { 
-  Plus, 
-  Trash2, 
-  Edit, 
-  LogOut, 
-  Search, 
-  ChevronDown, 
+import React, { useState, useMemo } from 'react';
+import useSWR from 'swr';
+import {
+  Plus,
+  Trash2,
+  Edit,
+  LogOut,
+  Search,
+  ChevronDown,
   ChevronUp,
   BarChart3,
   Users,
@@ -15,9 +16,9 @@ import {
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-// const BASE_URL = http://localhost:5000;
 const BASE_URL = "https://crossword-game-ca-backend.vercel.app";
 
+// Interfaces for data types
 interface Question {
   _id: string;
   type: string;
@@ -46,11 +47,45 @@ interface User {
   score: number;
 }
 
+// A simple fetcher that returns JSON or throws an error
+const fetcher = (url: string) =>
+  fetch(url).then((res) => {
+    if (!res.ok) {
+      throw new Error(`An error occurred while fetching ${url}`);
+    }
+    return res.json();
+  });
+
 const AdminPanel: React.FC = () => {
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [sessions, setSessions] = useState<GameSession[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [activeSessions, setActiveSession] = useState([]);
+  // SWR hooks for fetching data with a 60-second refresh interval.
+  const {
+    data: questionsRes,
+    error: questionsError,
+    isLoading: questionsLoading,
+    mutate: mutateQuestions
+  } = useSWR(`${BASE_URL}/api/admin/questions`, fetcher, { refreshInterval: 60000 });
+  
+  const {
+    data: sessionsRes,
+    error: sessionsError,
+    isLoading: sessionsLoading,
+    mutate: mutateSessions
+  } = useSWR(`${BASE_URL}/api/admin/sessions`, fetcher, { refreshInterval: 60000 });
+  
+  const {
+    data: usersRes,
+    error: usersError,
+    isLoading: usersLoading,
+    mutate: mutateUsers
+  } = useSWR(`${BASE_URL}/api/admin/users`, fetcher, { refreshInterval: 60000 });
+
+  // Derive arrays from responses
+  const questions: Question[] = questionsRes?.questions || [];
+  const sessions: GameSession[] = sessionsRes?.sessions || [];
+  const activeSessions: any[] = sessionsRes?.activeSessions || [];
+  const users: User[] = usersRes?.users || [];
+
+  // Other local UI states
   const [activeTab, setActiveTab] = useState<'questions' | 'sessions' | 'users'>('questions');
   const [newQuestion, setNewQuestion] = useState({
     type: '',
@@ -60,7 +95,7 @@ const AdminPanel: React.FC = () => {
     row: '',
     col: ''
   });
-  const [error, setError] = useState<string>(''); void(error)
+  const [error, setError] = useState<string>('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
@@ -69,54 +104,20 @@ const AdminPanel: React.FC = () => {
     key: '',
     direction: 'asc'
   });
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch data function
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const [questionsRes, sessionsRes, usersRes] = await Promise.all([
-        fetch(`${BASE_URL}/api/admin/questions`),
-        fetch(`${BASE_URL}/api/admin/sessions`),
-        fetch(`${BASE_URL}/api/admin/users`)
-      ]);
+  // Global loading state from SWR hooks.
+  const isLoading = questionsLoading || sessionsLoading || usersLoading;
 
-      if (!questionsRes.ok || !sessionsRes.ok || !usersRes.ok) {
-        throw new Error("Failed to fetch data");
-      }
-
-      const questionsData = await questionsRes.json();
-      const sessionsData = await sessionsRes.json();
-      const usersData = await usersRes.json();
-
-      setQuestions(questionsData.questions || []);
-      setSessions(sessionsData.sessions || []);
-      setActiveSession(sessionsData.activeSessions || []);
-      setUsers(usersData.users || []);
-    } catch (err: any) {
-      console.error("Data fetch error:", err);
-      setError(err.message || "An error occurred while fetching data");
-      toast.error(err.message || "An error occurred while fetching data");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Real time page reload to fetch dashboard stats for every 60 seconds
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Dashboard stats
+  // Dashboard stats using useMemo (recalculates when data changes)
   const dashboardStats = useMemo(() => {
     return {
       totalQuestions: questions.length,
       totalSessions: sessions.length,
       activeSessions: activeSessions.length,
       totalUsers: users.length,
-      topScorer: users.length ? users.reduce((max, user) => user.score > max.score ? user : max, users[0]) : null
+      topScorer: users.length
+        ? users.reduce((max, user) => (user.score > max.score ? user : max), users[0])
+        : null
     };
   }, [questions, sessions, users, activeSessions]);
 
@@ -125,21 +126,21 @@ const AdminPanel: React.FC = () => {
     const term = searchTerm.toLowerCase().trim();
     switch (activeTab) {
       case 'questions':
-        return questions.filter(q => 
+        return questions.filter(q =>
           q.clue.toLowerCase().includes(term) ||
           q.answer.toLowerCase().includes(term) ||
           q.type.toLowerCase().includes(term) ||
           q.number.toString().includes(term)
         );
       case 'sessions':
-        return sessions.filter(s => 
+        return sessions.filter(s =>
           s.sessionId.toLowerCase().includes(term) ||
           s.status.toLowerCase().includes(term) ||
           new Date(s.startTime).toLocaleString().toLowerCase().includes(term) ||
           (s.currentPlayer && s.currentPlayer.sroNumber.toLowerCase().includes(term))
         );
       case 'users':
-        return users.filter(u => 
+        return users.filter(u =>
           u.name.toLowerCase().includes(term) ||
           u.sroNumber.toLowerCase().includes(term) ||
           u.phoneNumber.toLowerCase().includes(term) ||
@@ -170,11 +171,14 @@ const AdminPanel: React.FC = () => {
     }));
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     setNewQuestion(prev => ({ ...prev, [name]: value }));
   };
 
+  // Create Question
   const handleCreateQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -188,34 +192,33 @@ const AdminPanel: React.FC = () => {
           answer: newQuestion.answer,
           row: Number(newQuestion.row),
           col: Number(newQuestion.col)
-        }),
+        })
       });
-
       if (!res.ok) throw new Error("Failed to create question");
-      
+
       toast.success("Question created successfully!");
-      fetchData();
+      // Revalidate questions endpoint
+      mutateQuestions();
       setNewQuestion({ type: '', number: '', clue: '', answer: '', row: '', col: '' });
       setIsCreateModalOpen(false);
     } catch (err: any) {
       console.error("Create question error:", err);
-      toast.error(err.message || "Failed to create question");
       setError(err.message);
+      toast.error(err.message || "Failed to create question");
     }
   };
 
+  // Delete Question
   const handleDeleteQuestion = async (questionId: string) => {
     if (!window.confirm("Are you sure you want to delete this question?")) return;
-
     try {
       const res = await fetch(`${BASE_URL}/api/game/questions/${questionId}`, {
-        method: 'DELETE',
+        method: 'DELETE'
       });
-
       if (!res.ok) throw new Error("Failed to delete question");
-      
+
       toast.success("Question deleted successfully!");
-      fetchData();
+      mutateQuestions();
     } catch (err: any) {
       console.error("Delete question error:", err);
       toast.error(err.message || "Failed to delete question");
@@ -223,6 +226,7 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  // Edit Question Modal functions
   const openEditModal = (question: Question) => {
     setEditingQuestion(question);
     setIsEditModalOpen(true);
@@ -242,13 +246,12 @@ const AdminPanel: React.FC = () => {
           answer: editingQuestion.answer,
           row: editingQuestion.row,
           col: editingQuestion.col
-        }),
+        })
       });
-
       if (!res.ok) throw new Error("Failed to update question");
 
       toast.success("Question updated successfully!");
-      fetchData();
+      mutateQuestions();
       setIsEditModalOpen(false);
       setEditingQuestion(null);
     } catch (err: any) {
@@ -258,6 +261,116 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  // Logout
+  const handleLogout = () => {
+    if (window.confirm("Are you sure you want to logout?")) {
+      localStorage.removeItem('isAdmin');
+      window.location.href = '/login';
+    }
+  };
+
+  // Modal for creating a new question
+  const renderCreateQuestionModal = () => (
+    isCreateModalOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm transition-all duration-300">
+        <div className="w-full max-w-lg p-8 bg-white rounded-xl shadow-xl transform transition-all duration-300">
+          <h2 className="mb-6 text-2xl font-bold text-center text-gray-800">Create New Question</h2>
+          <form onSubmit={handleCreateQuestion} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Type</label>
+                <select
+                  name="type"
+                  value={newQuestion.type}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Select Type</option>
+                  <option value="across">Across</option>
+                  <option value="down">Down</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Number</label>
+                <input
+                  type="number"
+                  name="number"
+                  value={newQuestion.number}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Clue</label>
+              <input
+                type="text"
+                name="clue"
+                value={newQuestion.clue}
+                onChange={handleInputChange}
+                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Answer</label>
+              <input
+                type="text"
+                name="answer"
+                value={newQuestion.answer}
+                onChange={handleInputChange}
+                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Row</label>
+                <input
+                  type="number"
+                  name="row"
+                  value={newQuestion.row}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Col</label>
+                <input
+                  type="number"
+                  name="col"
+                  value={newQuestion.col}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-4 mt-6">
+              <button
+                type="button"
+                onClick={() => setIsCreateModalOpen(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 transition"
+              >
+                Create Question
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )
+  );
+
+  // Modal for editing a question
   const renderEditQuestionModal = () => (
     isEditModalOpen && editingQuestion && (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm transition-all duration-300">
@@ -373,120 +486,12 @@ const AdminPanel: React.FC = () => {
     )
   );
 
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      localStorage.removeItem('isAdmin');
-      window.location.href = '/login';
-    }
-  };
-
-  // Modal for Creating a New Question
-  const renderCreateQuestionModal = () => (
-    isCreateModalOpen && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm transition-all duration-300">
-        <div className="w-full max-w-lg p-8 bg-white rounded-xl shadow-xl transform transition-all duration-300">
-          <h2 className="mb-6 text-2xl font-bold text-center text-gray-800">Create New Question</h2>
-          <form onSubmit={handleCreateQuestion} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Type</label>
-                <select
-                  name="type"
-                  value={newQuestion.type}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Select Type</option>
-                  <option value="across">Across</option>
-                  <option value="down">Down</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Number</label>
-                <input
-                  type="number"
-                  name="number"
-                  value={newQuestion.number}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">Clue</label>
-              <input
-                type="text"
-                name="clue"
-                value={newQuestion.clue}
-                onChange={handleInputChange}
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">Answer</label>
-              <input
-                type="text"
-                name="answer"
-                value={newQuestion.answer}
-                onChange={handleInputChange}
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Row</label>
-                <input
-                  type="number"
-                  name="row"
-                  value={newQuestion.row}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Col</label>
-                <input
-                  type="number"
-                  name="col"
-                  value={newQuestion.col}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-4 mt-6">
-              <button
-                type="button"
-                onClick={() => setIsCreateModalOpen(false)}
-                className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 transition"
-              >
-                Create Question
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    )
-  );
-
   // Render Table Headers with Sorting Icon
   const renderTableHeader = (headers: { key: string, label: string }[]) => (
     <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 text-gray-700">
       <tr>
         {headers.map(header => (
-          <th 
+          <th
             key={header.key}
             onClick={() => handleSort(header.key)}
             className="p-3 text-left cursor-pointer hover:bg-blue-100 select-none transition rounded-t"
@@ -494,8 +499,8 @@ const AdminPanel: React.FC = () => {
             <div className="flex items-center">
               <span>{header.label}</span>
               {sortConfig.key === header.key && (
-                sortConfig.direction === 'asc' 
-                  ? <ChevronUp className="ml-2 h-4 w-4" /> 
+                sortConfig.direction === 'asc'
+                  ? <ChevronUp className="ml-2 h-4 w-4" />
                   : <ChevronDown className="ml-2 h-4 w-4" />
               )}
             </div>
@@ -505,7 +510,7 @@ const AdminPanel: React.FC = () => {
     </thead>
   );
 
-  // A function handles report generation
+  // Function to handle report download
   const handleDownloadReport = () => {
     window.open(`${BASE_URL}/api/admin/report`, '_blank');
   };
@@ -583,6 +588,7 @@ const AdminPanel: React.FC = () => {
     </div>
   );
 
+  // Empty state when no data found
   const renderEmptyState = () => (
     <div className="text-center py-16">
       <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -618,17 +624,17 @@ const AdminPanel: React.FC = () => {
             <h1 className="text-3xl font-bold text-white">Crossword Puzzle Admin</h1>
           </div>
           <div className="flex items-center space-x-4 mt-4 md:mt-0">
-            <button 
+            <button
               onClick={handleDownloadReport}
               className="px-4 py-2 bg-white text-indigo-800 rounded-lg hover:bg-gray-100 transition shadow-md"
             >
               <span className="hidden sm:inline">Download </span>Report
             </button>
-            <button 
+            <button
               onClick={handleLogout}
               className="flex items-center px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600 transition shadow-md"
             >
-              <LogOut className="mr-0 sm:mr-2 h-5 w-5" /> 
+              <LogOut className="mr-0 sm:mr-2 h-5 w-5" />
               <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
@@ -668,8 +674,8 @@ const AdminPanel: React.FC = () => {
         {/* Search & Action Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-6">
           <div className="relative flex-grow">
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder={`Search ${activeTab}...`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -678,7 +684,7 @@ const AdminPanel: React.FC = () => {
             <Search className="absolute left-4 top-3 text-gray-400" />
           </div>
           {activeTab === 'questions' && (
-            <button 
+            <button
               onClick={() => setIsCreateModalOpen(true)}
               className="flex items-center justify-center px-6 py-3 text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition shadow-md"
             >
@@ -687,7 +693,7 @@ const AdminPanel: React.FC = () => {
           )}
         </div>
 
-        {/* Data Tables with improved styling */}
+        {/* Data Tables */}
         <div className="bg-white shadow-md rounded-xl overflow-hidden">
           {isLoading ? (
             <div className="p-6">
@@ -713,15 +719,13 @@ const AdminPanel: React.FC = () => {
                         <td className="p-4 font-medium">{q.number}</td>
                         <td className="p-4">{q.clue}</td>
                         <td className="p-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            q.type === 'across' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-                          }`}>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${q.type === 'across' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
                             {q.type}
                           </span>
                         </td>
                         <td className="p-4 font-mono">{q.answer}</td>
                         <td className="p-4">
-                        <span className="px-2 py-1 bg-gray-100 rounded text-sm">
+                          <span className="px-2 py-1 bg-gray-100 rounded text-sm">
                             ({q.row}, {q.col})
                           </span>
                         </td>
@@ -766,19 +770,14 @@ const AdminPanel: React.FC = () => {
                         <td className="p-4">{session.endTime ? new Date(session.endTime).toLocaleString() : '-'}</td>
                         <td className="p-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            session.status === 'active' 
-                              ? 'bg-green-100 text-green-800' 
-                              : session.status === 'completed'
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-gray-100 text-gray-800'
+                            session.status === 'active' ? 'bg-green-100 text-green-800' :
+                            session.status === 'completed' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
                           }`}>
                             {session.status}
                           </span>
                         </td>
                         <td className="p-4">
-                          {session.currentPlayer 
-                            ? session.currentPlayer.sroNumber 
-                            : '-'}
+                          {session.currentPlayer ? session.currentPlayer.sroNumber : '-'}
                         </td>
                       </tr>
                     ))}
