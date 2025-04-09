@@ -22,7 +22,6 @@ app.use(
       "Expires",
       "Pragma",
     ],
-    credentials: true,
   })
 );
 

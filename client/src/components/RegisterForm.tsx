@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, KeyRound, User, UserPlus, AlertCircle, Mail, Phone } from 'lucide-react';
 
-const BASE_URL = "https://crossword-game-backend.vercel.app";
+const BASE_URL = "https://crossword-game-ca-backend.vercel.app";
 // const BASE_URL = "http://localhost:5000";
 
 const RegisterForm: React.FC = () => {
