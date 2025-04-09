@@ -21,10 +21,6 @@ const createQuestion = async (req, res) => {
       col
     });
 
-    // (Optional) If you want to notify clients about a new question, you could emit an event:
-    const io = req.app.get('io');
-    io.emit('new-question', newQuestion);
-
     res.status(201).json({ message: "Question created", question: newQuestion });
   } catch (error) {
     console.error("Error in createQuestion:", error);
@@ -43,17 +39,10 @@ const getQuestions = async (req, res) => {
 };
 
 // Get all game sessions (with currentPlayer's sroNumber)
-// Here we also emit a Socket.IO event with the current sessions data.
-// (For a real-world scenario, consider emitting only when the data changes.)
 const getGameSessions = async (req, res) => {
   try {
     const sessions = await GameSession.find({}).populate('currentPlayer', 'sroNumber');
     const activeSessions = await GameSession.find({ status: "in-progress" });
-    
-    // Retrieve the Socket.IO instance and emit the sessions data.
-    const io = req.app.get('io');
-    io.emit('update-sessions', { sessions, activeSessions });
-    
     res.status(200).json({ sessions, activeSessions });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -61,14 +50,9 @@ const getGameSessions = async (req, res) => {
 };
 
 // Get all users along with their score and details
-// Similarly, we emit an event with updated users.
 const getUsers = async (req, res) => {
   try {
     const users = await User.find({});
-    
-    const io = req.app.get('io');
-    io.emit('update-users', { users });
-    
     res.status(200).json({ users });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -79,7 +63,7 @@ const getUsers = async (req, res) => {
 const getPlayedUsersReportData = async () => {
   const reportData = await User.aggregate([
     { $match: { isPlayed: true } },
-    // Lookup game sessions related to the user
+    // Lookup game sessions related to the use
     {
       $lookup: {
         from: "gamesessions", 

@@ -1,6 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import useSWR from 'swr';
-import io from 'socket.io-client';
 import {
   Plus,
   Trash2,
@@ -58,27 +57,27 @@ const fetcher = (url: string) =>
   });
 
 const AdminPanel: React.FC = () => {
-  // SWR hooks for fetching data without polling (initial load only).
+  // SWR hooks for fetching data with a 60-second refresh interval.
   const {
     data: questionsRes,
     error: questionsError,
     isLoading: questionsLoading,
     mutate: mutateQuestions
-  } = useSWR(`${BASE_URL}/api/admin/questions`, fetcher);
+  } = useSWR(`${BASE_URL}/api/admin/questions`, fetcher, { refreshInterval: 60000 });
   
   const {
     data: sessionsRes,
     error: sessionsError,
     isLoading: sessionsLoading,
     mutate: mutateSessions
-  } = useSWR(`${BASE_URL}/api/admin/sessions`, fetcher);
+  } = useSWR(`${BASE_URL}/api/admin/sessions`, fetcher, { refreshInterval: 60000 });
   
   const {
     data: usersRes,
     error: usersError,
     isLoading: usersLoading,
     mutate: mutateUsers
-  } = useSWR(`${BASE_URL}/api/admin/users`, fetcher);
+  } = useSWR(`${BASE_URL}/api/admin/users`, fetcher, { refreshInterval: 60000 });
 
   // Derive arrays from responses
   const questions: Question[] = questionsRes?.questions || [];
@@ -96,7 +95,7 @@ const AdminPanel: React.FC = () => {
     row: '',
     col: ''
   });
-  const [error, setError] = useState<string>(''); void(error)
+  const [error, setError] = useState<string>('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
@@ -198,7 +197,7 @@ const AdminPanel: React.FC = () => {
       if (!res.ok) throw new Error("Failed to create question");
 
       toast.success("Question created successfully!");
-      // Trigger revalidation only when there is a new question
+      // Revalidate questions endpoint
       mutateQuestions();
       setNewQuestion({ type: '', number: '', clue: '', answer: '', row: '', col: '' });
       setIsCreateModalOpen(false);
@@ -219,7 +218,6 @@ const AdminPanel: React.FC = () => {
       if (!res.ok) throw new Error("Failed to delete question");
 
       toast.success("Question deleted successfully!");
-      // Trigger revalidation only on deletion
       mutateQuestions();
     } catch (err: any) {
       console.error("Delete question error:", err);
@@ -270,34 +268,6 @@ const AdminPanel: React.FC = () => {
       window.location.href = '/login';
     }
   };
-
-  // WebSocket Setup with Socket.IO to listen for data changes
-  useEffect(() => {
-    const socket = io(BASE_URL);
-
-    // Listen for events from backend that indicate new data is available
-    socket.on('new-question', () => {
-      mutateQuestions();
-    });
-    socket.on('update-sessions', () => {
-      mutateSessions();
-    });
-    socket.on('update-users', () => {
-      mutateUsers();
-    });
-    // Optionally listen to update or delete events as well
-    socket.on('update-question', () => {
-      mutateQuestions();
-    });
-    socket.on('delete-question', () => {
-      mutateQuestions();
-    });
-
-    // Clean up the socket connection on unmount
-    return () => {
-      socket.disconnect();
-    };
-  }, [mutateQuestions, mutateSessions, mutateUsers]);
 
   // Modal for creating a new question
   const renderCreateQuestionModal = () => (
@@ -627,7 +597,7 @@ const AdminPanel: React.FC = () => {
       <h3 className="text-lg font-medium text-gray-800">No {activeTab} found</h3>
       <p className="text-gray-500 mt-2">
         {searchTerm 
-          ? `No ${activeTab} matching "${searchTerm}"`
+          ? `No ${activeTab} matching "${searchTerm}"` 
           : `There are no ${activeTab} to display yet`}
       </p>
       {activeTab === 'questions' && (
@@ -687,7 +657,7 @@ const AdminPanel: React.FC = () => {
                   setSearchTerm('');
                 }}
                 className={`py-3 px-5 whitespace-nowrap font-medium transition rounded-lg flex-1 ${
-                  activeTab === tab
+                  activeTab === tab 
                     ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
                     : 'text-gray-600 hover:bg-gray-100'
                 } capitalize`}
