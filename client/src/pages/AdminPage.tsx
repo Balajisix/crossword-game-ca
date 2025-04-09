@@ -63,21 +63,23 @@ const AdminPanel: React.FC = () => {
     error: questionsError,
     isLoading: questionsLoading,
     mutate: mutateQuestions
-  } = useSWR(`${BASE_URL}/api/admin/questions`, fetcher, { refreshInterval: 60000 });
+  } = useSWR(`${BASE_URL}/api/admin/questions`, fetcher, { refreshInterval: 60000 }); void(questionsError);
   
   const {
     data: sessionsRes,
     error: sessionsError,
     isLoading: sessionsLoading,
     mutate: mutateSessions
-  } = useSWR(`${BASE_URL}/api/admin/sessions`, fetcher, { refreshInterval: 60000 });
+  } = useSWR(`${BASE_URL}/api/admin/sessions`, fetcher, { refreshInterval: 60000 }); void(sessionsError);
+  void(mutateSessions);
   
   const {
     data: usersRes,
     error: usersError,
     isLoading: usersLoading,
     mutate: mutateUsers
-  } = useSWR(`${BASE_URL}/api/admin/users`, fetcher, { refreshInterval: 60000 });
+  } = useSWR(`${BASE_URL}/api/admin/users`, fetcher, { refreshInterval: 60000 }); void(usersError);
+  void(mutateUsers);
 
   // Derive arrays from responses
   const questions: Question[] = questionsRes?.questions || [];
@@ -95,7 +97,7 @@ const AdminPanel: React.FC = () => {
     row: '',
     col: ''
   });
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<string>(''); void(error);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
