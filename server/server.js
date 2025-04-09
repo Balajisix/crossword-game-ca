@@ -13,7 +13,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: "https://crossword-game-ca-nine.vercel.app",
+    origin: "https://crossword-game-sicasa.vercel.app",
     methods: ["GET", "POST", "DELETE", "PUT"],
     allowedHeaders: [
       "Content-Type",
