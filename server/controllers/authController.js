@@ -61,8 +61,8 @@ const registerUser = async (req, res) => {
 const loginUser = async (req, res) => {
   const { sroNumber, password } = req.body;
 
-  console.log("Login attempt: ", { sroNumber, password });
-  console.log("Admin env: ", { ADMIN_SRO: process.env.ADMIN_SRO, ADMIN_PASSWORD: process.env.ADMIN_PASSWORD });
+  // console.log("Login attempt: ", { sroNumber, password });
+  // console.log("Admin env: ", { ADMIN_SRO: process.env.ADMIN_SRO, ADMIN_PASSWORD: process.env.ADMIN_PASSWORD });
   
   if (sroNumber === process.env.ADMIN_SRO && password === process.env.ADMIN_PASSWORD) {
     console.log("Admin credentials matched.");
