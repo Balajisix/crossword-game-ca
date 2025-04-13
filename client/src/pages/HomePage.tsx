@@ -133,17 +133,27 @@ const HomePage: React.FC = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  useEffect(() => {
+    countRef.current = 0;
+    setTabSwitchCount(0);
+  }, [sessionId]);
+
   // Terminate game session on tab switch after three switches (backend sets isPlayed in DB)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden && sessionId) {
         countRef.current += 1;
-        setTabSwitchCount(countRef.current); // Optional: keep UI updated
+        setTabSwitchCount(countRef.current);
   
-        if (countRef.current === 3) {
+        if (countRef.current === 2) {
+          toast.warn("Warning: Next tab switch will terminate your game!");
+        } else if (countRef.current === 3) {
           toast.warn("You have switched tabs too many times. Your game will now terminate.");
           axios
-            .post(`${BASE_URL}/api/game/terminate`, { userId: localStorage.getItem('userId'), sessionId })
+            .post(`${BASE_URL}/api/game/terminate`, {
+              userId: localStorage.getItem('userId'),
+              sessionId
+            })
             .then(() => {
               window.location.href = '/';
             })
@@ -151,8 +161,6 @@ const HomePage: React.FC = () => {
               console.error('Error terminating game:', error);
               window.location.href = '/';
             });
-        } else if (countRef.current === 2) {
-          toast.warn("Warning: Next tab switch will terminate your game!");
         }
       }
     };
@@ -160,12 +168,8 @@ const HomePage: React.FC = () => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (sessionId) {
-        axios.post(`${BASE_URL}/api/game/terminate`, { sessionId })
-          .catch(error => console.error('Error terminating game on unmount:', error));
-      }
     };
-  }, [sessionId]);  
+  }, [sessionId]);    
 
   // Focus input when selected cell changes and set direction based on clue
   useEffect(() => {
