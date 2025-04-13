@@ -38,12 +38,10 @@ const HomePage: React.FC = () => {
   const [gameCompleted, setGameCompleted] = useState<boolean>(false);
   const [highlightedClue, setHighlightedClue] = useState<number | null>(null); void(highlightedClue)
   const [direction, setDirection] = useState<'across' | 'down'>('across');
-  const [tabSwitchCount, setTabSwitchCount] = useState<number>(0); void(tabSwitchCount)
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Reference to input elements for focusing
   const inputRefs = useRef<(HTMLInputElement | null)[][]>([]);
-  const countRef = useRef(0);
 
   // Start game session and fetch puzzle on mount
   useEffect(() => {
@@ -132,11 +130,6 @@ const HomePage: React.FC = () => {
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
-
-  useEffect(() => {
-    countRef.current = 0;
-    setTabSwitchCount(0);
-  }, [sessionId]);
 
   // Terminate game session on tab switch after three switches (backend sets isPlayed in DB)
   useEffect(() => {
