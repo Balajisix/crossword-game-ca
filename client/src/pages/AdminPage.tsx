@@ -659,7 +659,7 @@ const AdminPanel: React.FC = () => {
                   setActiveTab(tab as 'questions' | 'sessions' | 'users');
                   setSearchTerm('');
                 }}
-                className={`py-3 px-5 whitespace-nowrap font-medium transition rounded-lg flex-1 ${
+                className={`py-3 px-5 whitespace-nowrap font-medium transition rounded-lg flex-1 cursor-pointer ${
                   activeTab === tab 
                     ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
                     : 'text-gray-600 hover:bg-gray-100'
