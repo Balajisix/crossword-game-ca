@@ -43,6 +43,7 @@ const HomePage: React.FC = () => {
 
   // Reference to input elements for focusing
   const inputRefs = useRef<(HTMLInputElement | null)[][]>([]);
+  const countRef = useRef(0);
 
   // Start game session and fetch puzzle on mount
   useEffect(() => {
@@ -136,27 +137,26 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden && sessionId) {
-        setTabSwitchCount(prev => {
-          const newCount = prev + 1;
-          if (newCount === 3) {
-            toast.warn("You have switched tabs too many times. Your game will now terminate.");
-            axios
-              .post(`${BASE_URL}/api/game/terminate`, { userId: localStorage.getItem('userId'), sessionId })
-              .then(() => {
-                window.location.href = '/';
-              })
-              .catch(error => {
-                console.error('Error terminating game:', error);
-                window.location.href = '/';
-              });
-          } else if (newCount === 2) {
-            toast.warn("Warning: Next tab switch will terminate your game!");
-          }
-          return newCount;
-        });
+        countRef.current += 1;
+        setTabSwitchCount(countRef.current); // Optional: keep UI updated
+  
+        if (countRef.current === 3) {
+          toast.warn("You have switched tabs too many times. Your game will now terminate.");
+          axios
+            .post(`${BASE_URL}/api/game/terminate`, { userId: localStorage.getItem('userId'), sessionId })
+            .then(() => {
+              window.location.href = '/';
+            })
+            .catch(error => {
+              console.error('Error terminating game:', error);
+              window.location.href = '/';
+            });
+        } else if (countRef.current === 2) {
+          toast.warn("Warning: Next tab switch will terminate your game!");
+        }
       }
     };
-
+  
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -165,7 +165,7 @@ const HomePage: React.FC = () => {
           .catch(error => console.error('Error terminating game on unmount:', error));
       }
     };
-  }, [sessionId]);
+  }, [sessionId]);  
 
   // Focus input when selected cell changes and set direction based on clue
   useEffect(() => {
