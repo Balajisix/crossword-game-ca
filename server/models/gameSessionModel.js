@@ -11,6 +11,7 @@ const gameSessionSchema = new mongoose.Schema({
   },
   currentPlayer: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   isPlayed: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  tabSwitchCount: { type: Number, default: 0 },
 });
 
 module.exports = mongoose.model('GameSession', gameSessionSchema);

@@ -142,23 +142,33 @@ const deleteQuestion = async (req, res) => {
 const terminateGame = async (req, res) => {
   try {
     const { sessionId, userId } = req.body;
-    console.log("Terminating session:", sessionId);
     const session = await GameSession.findOne({ sessionId });
-    if (!session) {
-      return res.status(404).json({ message: "Session not found" });
+    if (!session) return res.status(404).json({ message: "Session not found" });
+
+    // bump the counter
+    session.tabSwitchCount = (session.tabSwitchCount || 0) + 1;
+
+    if (session.tabSwitchCount === 2) {
+      await session.save();
+      return res.status(200).json({ message: "warning" });
     }
-    if (session.status === 'in-progress') {
+
+    if (session.tabSwitchCount >= 3 && session.status === 'in-progress') {
       session.status = 'terminated';
       session.endTime = new Date();
       await session.save();
+      if (userId) {
+        await User.findByIdAndUpdate(userId, { isTerminated: true });
+      }
+      return res.status(200).json({ message: "terminated" });
     }
-    if (userId) {
-      await User.findByIdAndUpdate(userId, { isTerminated: true });
-    }
-    res.status(200).json({ message: "Game terminated", session });
+
+    // any other case
+    await session.save();
+    return res.status(200).json({ message: "no-action" });
   } catch (error) {
-    console.error("Error in terminateGame:", error);
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    return res.status(500).json({ message: error.message });
   }
 };
 
