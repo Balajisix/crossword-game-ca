@@ -615,7 +615,7 @@ const AdminPanel: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-gray-50">
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
       {renderCreateQuestionModal()}
       {renderEditQuestionModal()}
@@ -645,7 +645,7 @@ const AdminPanel: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="flex-grow container mx-auto px-4 py-8">
         {/* Dashboard Summary */}
         {renderDashboardSummary()}
 
@@ -818,7 +818,7 @@ const AdminPanel: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-100 border-t py-6 mt-8">
+      <footer className="bg-gray-100 border-t py-6">
         <div className="container mx-auto px-4 text-center text-gray-500">
           <p>&copy; {new Date().getFullYear()} Crossword Puzzle Game. All rights reserved.</p>
         </div>
