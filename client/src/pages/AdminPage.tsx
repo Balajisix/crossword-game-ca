@@ -268,7 +268,7 @@ const AdminPanel: React.FC = () => {
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to logout?")) {
       localStorage.removeItem('isAdmin');
-      window.location.href = '/login';
+      window.location.href = '/';
     }
   };
 
