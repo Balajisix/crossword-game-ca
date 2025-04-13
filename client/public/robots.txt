@@ -1,4 +1,4 @@
 User-agent: *
+Disallow: /admin/panel
 Allow: /
 Sitemap: https://crossword-game-sicasa.vercel.app/sitemap.xml
-Disallow: /admin/panel
