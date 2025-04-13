@@ -143,11 +143,11 @@ const HomePage: React.FC = () => {
             axios
               .post(`${BASE_URL}/api/game/terminate`, { userId: localStorage.getItem('userId'), sessionId })
               .then(() => {
-                window.location.href = '/login';
+                window.location.href = '/';
               })
               .catch(error => {
                 console.error('Error terminating game:', error);
-                window.location.href = '/login';
+                window.location.href = '/';
               });
           } else if (newCount === 2) {
             toast.warn("Warning: Next tab switch will terminate your game!");
@@ -418,7 +418,7 @@ const HomePage: React.FC = () => {
   };
 
   const handleLogout = () => {
-    window.location.href = '/login';
+    window.location.href = '/';
   };
 
   if (loading) {
